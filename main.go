@@ -2,72 +2,40 @@ package main
 
 import (
 	"CyMM/core"
-	"fmt"
-	"log"
-	"strings"
+	"flag"
+	"os"
+	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-var DATA_LOC, CACHE_LOC string
-var CyLog *log.Logger
-var Debug bool = true
-
-type Config struct {
-	isCurrent   bool
-	isDefault   bool
-	version     string
-	gamePath    string
-	gameVersion string
-	configName  string
-}
-
-func (c *Config) load() string {
-	fmt.Println(`Found following configs:`)
-	/* This is not reading directory as needed. "The system cannot find the file specified." */
-	CyLog.Println("DATA_LOC is ", DATA_LOC)
-	var fileList []string = core.SuffixFind(DATA_LOC, ".conf")
-
-	CyLog.Println(fileList)
-
-	for _, file := range fileList {
-		file = strings.TrimSpace(file)
-		if file == "" {
-			continue
-		}
-		fmt.Println(`Found Config: `, file)
-	}
-
-	fmt.Println(`Select your config file, or type 'NEW' to load defaults.`)
-	var selectedConf, uInput string
-	fmt.Scan(uInput)
-
-	switch uInput {
-	case "":
-		fmt.Println(`No input given, loading defaults.`)
-		return "default"
-	case "NEW":
-		fmt.Println(`Loading default config.`)
-		return "default"
-	default:
-		fmt.Println(`Loading selected config.`)
-	}
-
-	return selectedConf
-}
-
-func (c *Config) create(cName string) string {
-	fmt.Println(`Please select a name for your config file.`)
-	var userInput string
-	fmt.Scan(userInput)
-
-	return ""
-}
-
 func main() {
-	core.StartLogger()
-	core.SetDatDirs()
-	CyLog = core.CyLog
-	CyLog.Println("Application Started...")
 
-	c := Config{}
-	c.load()
+	/* Log setup */
+	lFileName := time.Now().Format("2006-01-02_15-04-05") + ".log"
+	runLogFile, _ := os.OpenFile(
+		lFileName,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+		0666,
+	)
+	defer runLogFile.Close()
+	multi := zerolog.MultiLevelWriter(os.Stdout, runLogFile)
+	log.Logger = zerolog.New(multi).With().Timestamp().Logger()
+
+	DEBUG := flag.Bool("debug", true, `Sets debug mode.`)
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if *DEBUG {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+	flag.Parse()
+
+	/* Let's start working */
+	core.SetDatDirs()
+	log.Info().Msg("Application Started...")
+
+	c := core.Config{}
+	c.Prep()
+
 }
